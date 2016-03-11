@@ -1,5 +1,5 @@
 /*
- * Copyright 2011-2015 the original author or authors.
+ * Copyright 2011-2016 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -436,7 +436,8 @@ public final class NearQuery {
 		if (metric != null) {
 			dbObject.put(
 					"distanceMultiplier",
-					usesMetricSystem() ? getMetricSystemNormalizer(metric).divide(new BigDecimal(1000), PRECISION + 3,
+					usesMetricSystem() ? BigDecimal.ONE.divide(getMetricSystemNormalizer(metric), PRECISION + 3,
+							RoundingMode.HALF_UP).divide(new BigDecimal(1000), PRECISION + 3,
 							RoundingMode.HALF_UP).doubleValue() : metric.getMultiplier());
 		}
 

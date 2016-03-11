@@ -54,6 +54,8 @@ import org.springframework.data.mongodb.core.CollectionCallback;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.Venue;
 import org.springframework.data.mongodb.core.aggregation.AggregationTests.CarDescriptor.Entry;
+import org.springframework.data.mongodb.core.geo.GeoJsonPoint;
+import org.springframework.data.mongodb.core.index.GeoSpatialIndexType;
 import org.springframework.data.mongodb.core.index.GeospatialIndex;
 import org.springframework.data.mongodb.core.query.NearQuery;
 import org.springframework.data.mongodb.core.query.Query;
@@ -1046,6 +1048,57 @@ public class AggregationTests {
 		DBObject firstResult = result.getMappedResults().get(0);
 		assertThat(firstResult.containsField("distance"), is(true));
 		assertThat((Double) firstResult.get("distance"), closeTo(117.620092203928, 0.00001));
+	}
+
+	/**
+	 * @see DATAMONGO-1348
+	 */
+	@Test
+	public void shouldSupportGeoJsonInGeoNearQueriesForAggregationWithDistanceField() {
+
+		mongoTemplate.insert(new Venue("Penn Station", -73.99408, 40.75057));
+		mongoTemplate.insert(new Venue("10gen Office", -73.99171, 40.738868));
+		mongoTemplate.insert(new Venue("Flatiron Building", -73.988135, 40.741404));
+
+		mongoTemplate.indexOps(Venue.class)
+				.ensureIndex(new GeospatialIndex("location").typed(GeoSpatialIndexType.GEO_2DSPHERE));
+
+		NearQuery geoNear = NearQuery.near(new GeoJsonPoint(-73, 40), Metrics.KILOMETERS).num(10).maxDistance(150);
+
+		Aggregation agg = newAggregation(Aggregation.geoNear(geoNear, "distance"));
+		AggregationResults<DBObject> result = mongoTemplate.aggregate(agg, Venue.class, DBObject.class);
+
+		assertThat(result.getMappedResults(), hasSize(3));
+
+		DBObject firstResult = result.getMappedResults().get(0);
+		assertThat(firstResult.containsField("distance"), is(true));
+		assertThat((Double) firstResult.get("distance"), closeTo(117.61940988193759, 0.00001));
+	}
+
+	/**
+	 * @see DATAMONGO-1348
+	 */
+	@Test
+	public void shouldSupportGeoJsonInGeoNearQueriesForAggregationWithDistanceFieldInMiles() {
+
+		mongoTemplate.insert(new Venue("Penn Station", -73.99408, 40.75057));
+		mongoTemplate.insert(new Venue("10gen Office", -73.99171, 40.738868));
+		mongoTemplate.insert(new Venue("Flatiron Building", -73.988135, 40.741404));
+
+		mongoTemplate.indexOps(Venue.class)
+				.ensureIndex(new GeospatialIndex("location").typed(GeoSpatialIndexType.GEO_2DSPHERE));
+
+		NearQuery geoNear = NearQuery.near(new GeoJsonPoint(-73, 40), Metrics.KILOMETERS).num(10).maxDistance(150)
+				.inMiles();
+
+		Aggregation agg = newAggregation(Aggregation.geoNear(geoNear, "distance"));
+		AggregationResults<DBObject> result = mongoTemplate.aggregate(agg, Venue.class, DBObject.class);
+
+		assertThat(result.getMappedResults(), hasSize(3));
+
+		DBObject firstResult = result.getMappedResults().get(0);
+		assertThat(firstResult.containsField("distance"), is(true));
+		assertThat((Double) firstResult.get("distance"), closeTo(73.085320918796, 0.00001));
 	}
 
 	/**
